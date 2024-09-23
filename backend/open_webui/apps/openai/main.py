@@ -418,6 +418,10 @@ async def generate_chat_completion(
         if "max_tokens" in payload and "max_completion_tokens" in payload:
             del payload["max_tokens"]
 
+    # OpenRouter-only params
+    if "openrouter.ai" in url:
+        payload["transforms"] = payload.get("transforms", ["middle-out"])
+
     # Convert the modified body back to JSON
     payload = json.dumps(payload)
 
