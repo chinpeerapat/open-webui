@@ -206,6 +206,15 @@ async def update_mcp_servers(request: UpdateMCPServersRequest) -> dict:
             if server_config:
                 logger.info(f"Processing server {server_id} with config: {server_config}")
                 
+                # Basic validation for StdioServerParameters
+                if "command" in server_config and not server_config.get("url"):
+                    command_path = server_config.get("command")
+                    # Check if it's a placeholder path or missing file
+                    if command_path and ("/path/to/" in command_path or not os.path.exists(command_path)):
+                        logger.warning(f"Server {server_id} has invalid command path: {command_path}")
+                        # Add comment in the config to indicate issue
+                        server_config["__warning__"] = f"Command path may not exist: {command_path}"
+                
                 # Skip installation and just add to configuration
                 if server_id not in config["mcpServers"]:
                     config["mcpServers"][server_id] = server_config

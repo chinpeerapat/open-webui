@@ -37,7 +37,7 @@ class StdioClient(GenericMcpClient):
         command = shutil.which(config.command)
         if command is None:
             logger.error(f"could not find command {config.command}")
-            exit(1)
+            raise FileNotFoundError(f"Command not found: {config.command}")
 
         own_config.command = command
 
