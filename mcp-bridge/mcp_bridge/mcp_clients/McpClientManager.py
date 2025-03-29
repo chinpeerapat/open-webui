@@ -30,23 +30,33 @@ class MCPClientManager:
     async def construct_client(self, name, server_config) -> client_types:
         logger.log("DEBUG", f"Constructing client for {server_config}")
 
-        if isinstance(server_config, StdioServerParameters):
-            client = StdioClient(name, server_config)
-            await client.start()
-            return client
+        try:
+            if isinstance(server_config, StdioServerParameters):
+                client = StdioClient(name, server_config)
+                await client.start()
+                return client
 
-        if isinstance(server_config, SSEMCPServer):
-            # TODO: implement sse client
-            client = SseClient(name, server_config)  # type: ignore
-            await client.start()
-            return client
-        
-        if isinstance(server_config, DockerMCPServer):
-            client = DockerClient(name, server_config)
-            await client.start()
-            return client
+            if isinstance(server_config, SSEMCPServer):
+                # TODO: implement sse client
+                client = SseClient(name, server_config)  # type: ignore
+                await client.start()
+                return client
+            
+            if isinstance(server_config, DockerMCPServer):
+                client = DockerClient(name, server_config)
+                await client.start()
+                return client
 
-        raise NotImplementedError("Client Type not supported")
+            raise NotImplementedError("Client Type not supported")
+        except FileNotFoundError as e:
+            logger.error(f"Failed to construct client for {name}: {str(e)}")
+            # Return None to indicate client creation failed
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error constructing client for {name}: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return None
 
     async def reload_config_and_clients(self):
         """Reload configuration and update clients as needed"""
@@ -84,10 +94,13 @@ class MCPClientManager:
             # Initialize new clients based on updated config
             logger.info("Initializing clients with updated configuration")
             for server_name, server_config in config.mcp_servers.items():
-                logger.info(f"Creating client for server: {server_name}")
-                self.clients[server_name] = await self.construct_client(
-                    server_name, server_config
-                )
+                logger.info(f"Processing server {server_name} with config: {server_config}")
+                client = await self.construct_client(server_name, server_config)
+                if client is not None:
+                    logger.info(f"Created client for server: {server_name}")
+                    self.clients[server_name] = client
+                else:
+                    logger.warning(f"Failed to create client for server: {server_name}, skipping")
             
             logger.info("Configuration and clients reloaded successfully")
             return True
